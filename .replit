@@ -2,4 +2,16 @@ modules = ["python-3.12"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["libxcrypt"]
+packages = ["glibcLocales", "libxcrypt"]
+
+[workflows]
+runButton = "Run FastAPI"
+
+[[workflows.workflow]]
+name = "Run FastAPI"
+author = 45445411
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "uvicorn api.main:app --host 0.0.0.0 --port 5000 --reload"
