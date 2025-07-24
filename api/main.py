@@ -23,6 +23,50 @@ optimizer = PBOptimizer(dao)
 async def root():
     return {"message": "Portfolio Optimization API"}
 
+@app.get("/positions")
+async def get_positions(as_of_date: str, portfolio: str = None):
+    try:
+        # Convert string date to datetime
+        date_obj = datetime.fromisoformat(as_of_date)
+        
+        # Get positions from data access layer
+        positions_df = dao.get_positions(date_obj, [portfolio] if portfolio else None)
+        
+        # Convert DataFrame to list of dictionaries
+        positions_list = positions_df.to_dict('records') if not positions_df.empty else []
+        
+        return {
+            "positions": positions_list,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving positions: {str(e)}")
+
+@app.get("/security-coefficients")
+async def get_security_coefficients(as_of_date: str, portfolio: str = None, security_id: int = None):
+    try:
+        # Convert string date to datetime
+        date_obj = datetime.fromisoformat(as_of_date)
+        
+        # Get security coefficients from data access layer
+        coefficients_df = dao.get_security_pb_coefficients(
+            date_obj, 
+            [portfolio] if portfolio else None,
+            [security_id] if security_id else None
+        )
+        
+        # Convert DataFrame to list of dictionaries
+        coefficients_list = coefficients_df.to_dict('records') if not coefficients_df.empty else []
+        
+        return {
+            "coefficients": coefficients_list,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving security coefficients: {str(e)}")
+
 @app.post("/allocate_trade", response_model=AllocationResponse)
 async def allocate_trade(request: AllocateTradeRequest):
     try:
