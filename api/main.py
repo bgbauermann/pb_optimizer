@@ -1,14 +1,36 @@
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import pandas as pd
 import sqlite3
 from datetime import datetime
+import secrets
 from api.data_models import AllocateTradeRequest, AllocationResponse
 from src.pb_optimizer import PBOptimizer
 from src.data.data_access_layer import DataAccessLayer
 from src.data.initialize_data import initialize_mock_data
 
 app = FastAPI(title="Portfolio Optimization API", version="1.0.0")
+security = HTTPBasic()
+
+# Simple username/password storage (in production, use a secure database)
+VALID_USERS = {
+    "admin": "password123",
+    "user": "secret456"
+}
+
+def authenticate_user(credentials: HTTPBasicCredentials = Depends(security)):
+    """Authenticate user with basic HTTP authentication"""
+    username = credentials.username
+    password = credentials.password
+    
+    if username not in VALID_USERS or not secrets.compare_digest(password, VALID_USERS[username]):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return username
 
 # Initialize database connection and data access layer
 db_conn = sqlite3.connect("portfolio.db", check_same_thread=False)
@@ -20,7 +42,7 @@ dao = DataAccessLayer(db_conn)
 optimizer = PBOptimizer(dao)
 
 @app.get("/positions", tags=["Data Access"])
-async def get_positions(as_of_date: str, portfolio: str = None):
+async def get_positions(as_of_date: str, portfolio: str = None, current_user: str = Depends(authenticate_user)):
     try:
         # Convert string date to datetime
         date_obj = datetime.fromisoformat(as_of_date)
@@ -40,7 +62,7 @@ async def get_positions(as_of_date: str, portfolio: str = None):
         raise HTTPException(status_code=500, detail=f"Error retrieving positions: {str(e)}")
 
 @app.get("/security-coefficients", tags=["Data Access"])
-async def get_security_coefficients(as_of_date: str, portfolio: str = None, security_id: int = None):
+async def get_security_coefficients(as_of_date: str, portfolio: str = None, security_id: int = None, current_user: str = Depends(authenticate_user)):
     try:
         # Convert string date to datetime
         date_obj = datetime.fromisoformat(as_of_date)
@@ -64,7 +86,7 @@ async def get_security_coefficients(as_of_date: str, portfolio: str = None, secu
         raise HTTPException(status_code=500, detail=f"Error retrieving security coefficients: {str(e)}")
 
 @app.post("/allocate_trade", response_model=AllocationResponse, tags=['Optimization'])
-async def allocate_trade(request: AllocateTradeRequest):
+async def allocate_trade(request: AllocateTradeRequest, current_user: str = Depends(authenticate_user)):
     try:
         # Convert Pydantic models to DataFrame for business logic
         trade_data = []
