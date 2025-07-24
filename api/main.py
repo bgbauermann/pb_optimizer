@@ -34,10 +34,8 @@ def authenticate_user(credentials: HTTPBasicCredentials = Depends(security)):
 
 # Initialize database connection and data access layer
 db_conn = sqlite3.connect("portfolio.db", check_same_thread=False)
-
 # Initialize mock data on startup
 initialize_mock_data(db_conn)
-
 dao = DataAccessLayer(db_conn)
 optimizer = PBOptimizer(dao)
 
