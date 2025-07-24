@@ -19,11 +19,7 @@ initialize_mock_data(db_conn)
 dao = DataAccessLayer(db_conn)
 optimizer = PBOptimizer(dao)
 
-@app.get("/")
-async def root():
-    return {"message": "Portfolio Optimization API"}
-
-@app.get("/positions")
+@app.get("/positions", tags=["Data Access"])
 async def get_positions(as_of_date: str, portfolio: str = None):
     try:
         # Convert string date to datetime
@@ -43,7 +39,7 @@ async def get_positions(as_of_date: str, portfolio: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving positions: {str(e)}")
 
-@app.get("/security-coefficients")
+@app.get("/security-coefficients", tags=["Data Access"])
 async def get_security_coefficients(as_of_date: str, portfolio: str = None, security_id: int = None):
     try:
         # Convert string date to datetime
@@ -67,7 +63,7 @@ async def get_security_coefficients(as_of_date: str, portfolio: str = None, secu
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving security coefficients: {str(e)}")
 
-@app.post("/allocate_trade", response_model=AllocationResponse)
+@app.post("/allocate_trade", response_model=AllocationResponse, tags=['Optimization'])
 async def allocate_trade(request: AllocateTradeRequest):
     try:
         # Convert Pydantic models to DataFrame for business logic
