@@ -6,11 +6,16 @@ from datetime import datetime
 from api.data_models import AllocateTradeRequest, AllocationResponse
 from src.pb_optimizer import PBOptimizer
 from src.data.data_access_layer import DataAccessLayer
+from src.data.initialize_data import initialize_mock_data
 
 app = FastAPI(title="Portfolio Optimization API", version="1.0.0")
 
 # Initialize database connection and data access layer
 db_conn = sqlite3.connect("portfolio.db", check_same_thread=False)
+
+# Initialize mock data on startup
+initialize_mock_data(db_conn)
+
 dao = DataAccessLayer(db_conn)
 optimizer = PBOptimizer(dao)
 
