@@ -16,18 +16,29 @@ class PBOptimizer:
         positions = self.dao.get_positions(as_of_date)
         sec_coefficients = self.dao.get_security_pb_coefficients(as_of_date)
         normalized_coefficients = self.normalize_coefficients(sec_coefficients)
-        metrics = self.calculate_metrics(positions, normalized_coefficients, "PB_A")
+        optimization_priorities = pd.DataFrame()
+        allocations = pd.DataFrame()
+        metrics = self.calculate_metrics(positions, normalized_coefficients, optimization_priorities,
+                                         trade_list, allocations, "PB_A")
         allocations = pd.DataFrame()
         return allocations
 
-    def calculate_metrics(self, positions: pd.DataFrame, coefficients: pd.DataFrame, pb_code: str) -> pd.DataFrame:
+    def calculate_metrics(self, positions: pd.DataFrame, coefficients: pd.DataFrame, optimization_priorities: pd.DataFrame,
+                          trade: pd.DataFrame, allocations: pd.DataFrame, pb_code: str) -> pd.DataFrame:
         pb_positions = positions.loc[positions['counterparty'] == pb_code, ['security_id', 'market_value']]
         pb_positions.set_index('security_id', inplace=True)
+        pb_trade = trade.loc[:, ['security_id', 'market_value']]
+        pb_trade.set_index('security_id', inplace=True)
+        combined_index = pb_positions.index.union(pb_trade.index)
+        pb_positions = pb_positions.reindex(combined_index).fillna(0)
+        pb_trade = pb_trade.reindex(combined_index).fillna(0)
+        allocations = pd.DataFrame(1, index=combined_index, columns=['allocation'])
+        final_val = pb_positions['market_value'] + pb_trade['market_value'] * allocations['allocation']
         coefficients_pb = coefficients.loc[coefficients['counterparty'] == pb_code, ['security_id', 'coefficient_name', 'coefficient_value']]
         coefficients_pb = coefficients_pb.set_index(['coefficient_name', 'security_id']).unstack('security_id')
         coefficients_pb = coefficients_pb['coefficient_value']
         coefficients_pb = coefficients_pb.reindex(columns=pb_positions.index)
-        metrics = coefficients_pb.dot(pb_positions)
+        metrics = np.einsum('ij,j->i', coefficients_pb.values, final_val.values)
         return metrics
 
     def normalize_coefficients(self, pb_coefficients: pd.DataFrame) -> pd.DataFrame:
@@ -51,5 +62,5 @@ if __name__ == "__main__":
     data_access_layer = DataAccessLayer(sql_client)
     optimizer = PBOptimizer(data_access_layer)
     as_of_date = datetime(2024,1,15)
-    trade_list = pd.DataFrame()
+    trade_list = pd.DataFrame({'security_id': [1001], 'market_value': 1500})
     asyncio.run(optimizer.allocate_trade_list(as_of_date, trade_list))
