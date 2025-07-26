@@ -15,8 +15,7 @@ security = HTTPBasic()
 
 # Simple username/password storage (in production, use a secure database)
 VALID_USERS = {
-    "admin": "password123",
-    "user": "secret456"
+    "user": "secret123"
 }
 
 def authenticate_user(credentials: HTTPBasicCredentials = Depends(security)):
