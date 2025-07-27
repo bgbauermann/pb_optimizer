@@ -5,7 +5,7 @@ import pandas as pd
 import sqlite3
 from datetime import datetime
 import secrets
-from api.data_models import AllocateTradeRequest, AllocationResponse
+from api.data_models import AllocateTradeRequest, AllocationResponse, SetOptimizationPrioritiesRequest, OptimizationPrioritiesResponse
 from src.pb_optimizer import PBOptimizer
 from src.data.data_access_layer import DataAccessLayer
 from src.data.initialize_data import initialize_mock_data
@@ -81,6 +81,58 @@ async def get_security_coefficients(as_of_date: str = '2024-01-15', security_id:
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving security coefficients: {str(e)}")
+
+@app.get("/optimization-priorities", response_model=OptimizationPrioritiesResponse, tags=["Data Access"])
+async def get_optimization_priorities(current_user: str = Depends(authenticate_user)):
+    try:
+        # Get optimization priorities from data access layer
+        priorities_df = dao.get_optimization_priorities()
+        
+        # Convert DataFrame to list of dictionaries
+        priorities_list = priorities_df.to_dict('records') if not priorities_df.empty else []
+        
+        return OptimizationPrioritiesResponse(
+            priorities=priorities_list,
+            status="success"
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving optimization priorities: {str(e)}")
+
+@app.post("/optimization-priorities", response_model=OptimizationPrioritiesResponse, tags=["Data Access"])
+async def set_optimization_priorities(request: SetOptimizationPrioritiesRequest, current_user: str = Depends(authenticate_user)):
+    try:
+        # Convert Pydantic models to DataFrame
+        priorities_data = []
+        for priority in request.priorities:
+            priorities_data.append({
+                "metric_name": priority.metric_name,
+                "weight": priority.weight
+            })
+        
+        priorities_df = pd.DataFrame(priorities_data)
+        
+        # Validate that weights sum to 1.0 (optional business rule)
+        total_weight = priorities_df['weight'].sum()
+        if abs(total_weight - 1.0) > 0.001:  # Allow small floating point errors
+            raise HTTPException(status_code=400, detail=f"Weights must sum to 1.0, got {total_weight}")
+        
+        # Set optimization priorities in data access layer
+        dao.set_optimization_priorities(priorities_df)
+        
+        # Return the updated priorities
+        updated_priorities_df = dao.get_optimization_priorities()
+        priorities_list = updated_priorities_df.to_dict('records') if not updated_priorities_df.empty else []
+        
+        return OptimizationPrioritiesResponse(
+            priorities=priorities_list,
+            status="success"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error setting optimization priorities: {str(e)}")
 
 @app.post("/allocate_trade", response_model=AllocationResponse, tags=['Optimization'])
 async def allocate_trade(request: AllocateTradeRequest, current_user: str = Depends(authenticate_user)):

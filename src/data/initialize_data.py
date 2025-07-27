@@ -26,6 +26,13 @@ def initialize_mock_data(db_conn: sqlite3.Connection):
         )
     """)
     
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS optimization_priorities (
+            metric_name TEXT PRIMARY KEY,
+            weight REAL
+        )
+    """)
+    
     # Read positions CSV
     positions_path = os.path.join(os.path.dirname(__file__), 'positions.csv')
     if os.path.exists(positions_path):
@@ -45,6 +52,16 @@ def initialize_mock_data(db_conn: sqlite3.Connection):
         print(f"Loaded {len(coefficients_df)} coefficient records")
     else:
         print("security_coefficients.csv not found")
+    
+    # Read optimization priorities CSV
+    priorities_path = os.path.join(os.path.dirname(__file__), 'optimization_priorities.csv')
+    if os.path.exists(priorities_path):
+        priorities_df = pd.read_csv(priorities_path)
+        # Insert priorities data into database
+        priorities_df.to_sql('optimization_priorities', db_conn, if_exists='replace', index=False)
+        print(f"Loaded {len(priorities_df)} optimization priority records")
+    else:
+        print("optimization_priorities.csv not found")
     
     db_conn.commit()
     print("Database initialization completed")

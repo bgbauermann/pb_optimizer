@@ -17,3 +17,14 @@ class AllocateTradeRequest(BaseModel):
 class AllocationResponse(BaseModel):
     allocations: List[dict]
     status: str
+
+class OptimizationPriority(BaseModel):
+    metric_name: str
+    weight: float
+
+class SetOptimizationPrioritiesRequest(BaseModel):
+    priorities: List[OptimizationPriority]
+
+class OptimizationPrioritiesResponse(BaseModel):
+    priorities: List[dict]
+    status: str

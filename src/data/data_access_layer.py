@@ -40,3 +40,21 @@ class DataAccessLayer:
             
         query = f"SELECT * FROM pb_coefficients WHERE {' AND '.join(conditions)}"
         return pd.read_sql(query, self.db.connection, params=params)
+
+    def get_optimization_priorities(self) -> pd.DataFrame:
+        """
+        Get optimization priorities for metrics
+        :return: dataframe with metric priorities
+        """
+        query = "SELECT * FROM optimization_priorities"
+        return pd.read_sql(query, self.db.connection)
+
+    def set_optimization_priorities(self, priorities_df: pd.DataFrame) -> None:
+        """
+        Set optimization priorities for metrics
+        :param priorities_df: dataframe with metric_name and weight columns
+        """
+        # Clear existing priorities and insert new ones
+        self.db.execute("DELETE FROM optimization_priorities")
+        priorities_df.to_sql('optimization_priorities', self.db.connection, if_exists='append', index=False)
+        self.db.connection.commit()
