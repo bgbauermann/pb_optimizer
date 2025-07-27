@@ -27,6 +27,13 @@ class DataAccessLayer:
 
     def get_security_pb_coefficients(self, as_of_date: datetime, portfolio: Optional[list] = None,
                                      security_id: Optional[list] = None) -> pd.DataFrame:
+        """
+        Return the portfolio coefficients
+        :param as_of_date:
+        :param portfolio:
+        :param security_id:
+        :return:
+        """
         conditions = ["as_of_date = ?"]
         params = [as_of_date.strftime('%Y-%m-%d')]
         

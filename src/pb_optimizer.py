@@ -16,7 +16,7 @@ class PBOptimizer:
         positions = self.dao.get_positions(as_of_date)
         sec_coefficients = self.dao.get_security_pb_coefficients(as_of_date)
         normalized_coefficients = self.normalize_coefficients(sec_coefficients)
-        optimization_priorities = pd.DataFrame()
+        optimization_priorities = self.dao.get_optimization_priorities()
         allocations = pd.DataFrame(1, index=[1001], columns=['allocation'])
         metrics = self.calculate_metrics(positions, normalized_coefficients, optimization_priorities,
                                          trade_list, allocations)
@@ -31,7 +31,10 @@ class PBOptimizer:
         security_index = pd.Index(security_universe)
         trade = trade.loc[:, ['security_id', 'market_value']]
         trade = trade.set_index('security_id').reindex(security_index).fillna(0)
+        allocations = pd.DataFrame(1, index=security_index, columns=['allocation'])
         # Iterate through PB accounts to build required matrices
+        coefs = []
+        vals = []
         for pb in pb_codes:
             pb_positions = positions.loc[positions['counterparty'] == pb, ['security_id', 'market_value']]
             pb_positions.set_index('security_id', inplace=True)
@@ -40,8 +43,13 @@ class PBOptimizer:
             coefficients_pb = coefficients.loc[coefficients['counterparty'] == pb, ['security_id', 'metric_name', 'coefficient_value']]
             coefficients_pb = coefficients_pb.set_index(['metric_name', 'security_id']).unstack('security_id')
             coefficients_pb = coefficients_pb['coefficient_value']
-            coefficients_pb = coefficients_pb.reindex(columns=pb_positions.index)
-        metrics = np.einsum('ij,j->i', coefficients_pb.values, final_val.values)
+            coefficients_pb = coefficients_pb.reindex(columns=security_index)
+            coefs.append(coefficients_pb)
+            vals.append(final_val)
+        priorities_matrix = optimization_priorities['weight'].values
+        coefficients_matrix = np.stack(coefs)
+        values_matrix = np.stack(vals)
+        metrics = np.einsum('m,pms,ps->',priorities_matrix, coefficients_matrix, values_matrix)
         return metrics
 
     def normalize_coefficients(self, pb_coefficients: pd.DataFrame) -> pd.DataFrame:
