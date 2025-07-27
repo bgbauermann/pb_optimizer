@@ -1,0 +1,4 @@
+metric_name,weight
+METRIC_A,0.6
+METRIC_B,0.3
+METRIC_C,0.1

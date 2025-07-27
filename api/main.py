@@ -39,13 +39,13 @@ dao = DataAccessLayer(db_conn)
 optimizer = PBOptimizer(dao)
 
 @app.get("/positions", tags=["Data Access"])
-async def get_positions(as_of_date: str, portfolio: str = None, current_user: str = Depends(authenticate_user)):
+async def get_positions(as_of_date: str = '2024-01-15', current_user: str = Depends(authenticate_user)):
     try:
         # Convert string date to datetime
         date_obj = datetime.fromisoformat(as_of_date)
         
         # Get positions from data access layer
-        positions_df = dao.get_positions(date_obj, [portfolio] if portfolio else None)
+        positions_df = dao.get_positions(date_obj, None)
         
         # Convert DataFrame to list of dictionaries
         positions_list = positions_df.to_dict('records') if not positions_df.empty else []
@@ -59,7 +59,7 @@ async def get_positions(as_of_date: str, portfolio: str = None, current_user: st
         raise HTTPException(status_code=500, detail=f"Error retrieving positions: {str(e)}")
 
 @app.get("/security-coefficients", tags=["Data Access"])
-async def get_security_coefficients(as_of_date: str, portfolio: str = None, security_id: int = None, current_user: str = Depends(authenticate_user)):
+async def get_security_coefficients(as_of_date: str = '2024-01-15', security_id: int = None, current_user: str = Depends(authenticate_user)):
     try:
         # Convert string date to datetime
         date_obj = datetime.fromisoformat(as_of_date)
@@ -67,7 +67,7 @@ async def get_security_coefficients(as_of_date: str, portfolio: str = None, secu
         # Get security coefficients from data access layer
         coefficients_df = dao.get_security_pb_coefficients(
             date_obj, 
-            [portfolio] if portfolio else None,
+            None,
             [security_id] if security_id else None
         )
         

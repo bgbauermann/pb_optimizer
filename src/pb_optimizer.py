@@ -17,7 +17,7 @@ class PBOptimizer:
         sec_coefficients = self.dao.get_security_pb_coefficients(as_of_date)
         normalized_coefficients = self.normalize_coefficients(sec_coefficients)
         optimization_priorities = pd.DataFrame()
-        allocations = pd.DataFrame(1, index=combined_index, columns=['allocation'])
+        allocations = pd.DataFrame(1, index=[1001], columns=['allocation'])
         metrics = self.calculate_metrics(positions, normalized_coefficients, optimization_priorities,
                                          trade_list, allocations)
         allocations = pd.DataFrame()
@@ -26,17 +26,19 @@ class PBOptimizer:
     def calculate_metrics(self, positions: pd.DataFrame, coefficients: pd.DataFrame, optimization_priorities: pd.DataFrame,
                           trade: pd.DataFrame, allocations: pd.DataFrame) -> pd.DataFrame:
         pb_codes = coefficients['counterparty'].unique()
+        # Get universe of security to ensure same matrix dimensions for different pb accounts
+        security_universe = pd.concat([trade['security_id'], positions['security_id'], coefficients['security_id']]).unique()
+        security_index = pd.Index(security_universe)
         trade = trade.loc[:, ['security_id', 'market_value']]
-        trade.set_index('security_id', inplace=True)
+        trade = trade.set_index('security_id').reindex(security_index).fillna(0)
+        # Iterate through PB accounts to build required matrices
         for pb in pb_codes:
             pb_positions = positions.loc[positions['counterparty'] == pb, ['security_id', 'market_value']]
             pb_positions.set_index('security_id', inplace=True)
-            combined_index = pb_positions.index.union(trade.index)
-            pb_positions = pb_positions.reindex(combined_index).fillna(0)
-            pb_trade = trade.reindex(combined_index).fillna(0)
-            final_val = pb_positions['market_value'] + pb_trade['market_value'] * allocations['allocation']
-            coefficients_pb = coefficients.loc[coefficients['counterparty'] == pb, ['security_id', 'coefficient_name', 'coefficient_value']]
-            coefficients_pb = coefficients_pb.set_index(['coefficient_name', 'security_id']).unstack('security_id')
+            pb_positions = pb_positions.reindex(security_index).fillna(0)
+            final_val = pb_positions['market_value'] + trade['market_value'] * allocations['allocation']
+            coefficients_pb = coefficients.loc[coefficients['counterparty'] == pb, ['security_id', 'metric_name', 'coefficient_value']]
+            coefficients_pb = coefficients_pb.set_index(['metric_name', 'security_id']).unstack('security_id')
             coefficients_pb = coefficients_pb['coefficient_value']
             coefficients_pb = coefficients_pb.reindex(columns=pb_positions.index)
         metrics = np.einsum('ij,j->i', coefficients_pb.values, final_val.values)
@@ -48,7 +50,7 @@ class PBOptimizer:
         :param pb_coefficients:
         :return:
         """
-        group_cols = ['counterparty', 'coefficient_name']
+        group_cols = ['counterparty', 'metric_name']
         pb_coefficients['min_val'] = pb_coefficients.groupby(group_cols)['coefficient_value'].transform('min')
         pb_coefficients['max_val'] = pb_coefficients.groupby(group_cols)['coefficient_value'].transform('max')
         # Avoid divide by zero (if min = max)

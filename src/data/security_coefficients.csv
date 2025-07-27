@@ -1,4 +1,4 @@
-as_of_date,counterparty,security_id,coefficient_name,coefficient_value
+as_of_date,counterparty,security_id,metric_name,coefficient_value
 2024-01-15,PB_A,1001,METRIC_A,0.25
 2024-01-15,PB_A,1001,METRIC_B,100
 2024-01-15,PB_A,1001,METRIC_C,4.5
