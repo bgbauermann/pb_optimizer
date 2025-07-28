@@ -17,8 +17,8 @@ RUN uv sync --frozen --no-cache
 # Copy application code
 COPY . .
 
-# Expose port 5000
-EXPOSE 5000
+# Expose port 8080
+EXPOSE 8080
 
 # Run the FastAPI application
 CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "5000"]
