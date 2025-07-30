@@ -9,7 +9,7 @@ from src.pb_optimizer import PBOptimizer
 from src.data.data_access_layer import DataAccessLayer
 from src.data.initialize_data import initialize_mock_data
 
-app = FastAPI(title="Portfolio Optimization API", version="1.0.0")
+app = FastAPI(title="PB Optimization API", version="1.0.0")
 security = HTTPBasic()
 
 # Simple username/password storage (in production, use a secure database)
