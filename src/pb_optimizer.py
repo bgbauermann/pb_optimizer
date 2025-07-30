@@ -126,7 +126,7 @@ class PBOptimizer:
         allocations = np.round(allocations, decimals=2).transpose()
         allocations_df = pd.DataFrame(data=allocations, index=security_universe, columns=pb_codes)
         trade_allocations = allocations_df.mul(trade, axis=0)
-        trade_allocations.dropna(axis=1, how='all', inplace=True)
+        trade_allocations = trade_allocations.loc[~(trade_allocations == 0).all(axis=1)]
         return trade_allocations
 
 if __name__ == "__main__":

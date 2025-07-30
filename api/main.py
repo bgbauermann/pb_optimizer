@@ -1,5 +1,4 @@
-
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Body
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import pandas as pd
 import sqlite3
@@ -134,8 +133,14 @@ async def set_optimization_priorities(request: SetOptimizationPrioritiesRequest,
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error setting optimization priorities: {str(e)}")
 
+allocate_trade_example = [{"as_of_date": "2024-01-15T00:00:00",
+                          "trades": [{"security_id": 1001, "market_value": 50000},
+                                     {"security_id": 1002, "market_value": 10000}
+                                     ]}]
+
 @app.post("/allocate_trade", response_model=AllocationResponse, tags=['Optimization'])
-async def allocate_trade(request: AllocateTradeRequest, current_user: str = Depends(authenticate_user)):
+async def allocate_trade(request: AllocateTradeRequest = Body(..., examples=allocate_trade_example),
+                         current_user: str = Depends(authenticate_user)):
     """
     Allocate trades across prime brokerage accounts.
     
@@ -165,7 +170,7 @@ async def allocate_trade(request: AllocateTradeRequest, current_user: str = Depe
         allocations_df = await optimizer.allocate_trade_list(request.as_of_date, trade_df)
         
         # Convert result back to response format
-        allocations_list = allocations_df.to_dict('records') if not allocations_df.empty else []
+        allocations_list = [{k: v} for k, v in allocations_df.to_dict('index').items()] if not allocations_df.empty else []
         
         return AllocationResponse(
             allocations=allocations_list,
