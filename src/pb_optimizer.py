@@ -47,8 +47,12 @@ class PBOptimizer:
 
         result = minimize(self.calculate_metrics, allocations_flat, args=(values, coefficients, optimization_priorities, trade),
                           constraints=constraints, bounds=bounds)
-        result.x.reshape(allocations_shape[0], allocations_shape[1])
-        return result
+
+        # Format results
+        allocations = result.x.reshape(allocations_shape[0], allocations_shape[1])
+        pb_codes = sec_coefficients['counterparty'].unique()
+        allocated_trade = self.format_results(allocations, trade, pb_codes, security_index)
+        return allocated_trade
 
     def get_security_universe(self, positions: pd.DataFrame, coefficients: pd.DataFrame, trade: pd.DataFrame) -> pd.Index:
         """
@@ -117,6 +121,13 @@ class PBOptimizer:
                                          (pb_coefficients['max_val'] - pb_coefficients['min_val']).replace(0, 1))
         pb_coefficients = pb_coefficients.drop(columns=['min_val', 'max_val'])
         return pb_coefficients
+
+    def format_results(self, allocations: np.ndarray, trade: np.ndarray, pb_codes, security_universe) -> dict:
+        allocations = np.round(allocations, decimals=2).transpose()
+        allocations_df = pd.DataFrame(data=allocations, index=security_universe, columns=pb_codes)
+        trade_allocations = allocations_df.mul(trade, axis=0)
+        trade_allocations.dropna(axis=1, how='all', inplace=True)
+        return trade_allocations
 
 if __name__ == "__main__":
     sql_client = sqlite3.connect('portfolio.db')
