@@ -136,16 +136,27 @@ async def set_optimization_priorities(request: SetOptimizationPrioritiesRequest,
 
 @app.post("/allocate_trade", response_model=AllocationResponse, tags=['Optimization'])
 async def allocate_trade(request: AllocateTradeRequest, current_user: str = Depends(authenticate_user)):
+    """
+    Allocate trades across prime brokerage accounts.
+    
+    Example request:
+    ```
+    {
+        "as_of_date": "2024-01-15T00:00:00",
+        "trades": [
+            {"security_id": 1001, "market_value": 50000},
+            {"security_id": 1002, "market_value": 10000}
+        ]
+    }
+    ```
+    """
     try:
         # Convert Pydantic models to DataFrame for business logic
         trade_data = []
         for trade in request.trades:
             trade_data.append({
-                "side": trade.side,
                 "security_id": trade.security_id,
-                "quantity": trade.quantity,
-                "price": trade.price,
-                "accrued_interest": trade.accrued_interest
+                "market_value": trade.market_value
             })
         
         trade_df = pd.DataFrame(trade_data)
